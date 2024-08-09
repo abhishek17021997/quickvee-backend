@@ -116,7 +116,7 @@ const ProfitSummaryList = (props) => {
       setTotalCost(
         ProfitSummaryReportDataState?.ProfitSummaryReportData?.length > 0
           ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
-              (total, report) => total + parseFloat(report.product_varient_cost === null ? priceFormate(report.product_cost) : priceFormate(report.product_varient_cost) ?? 0),
+              (total, report) => total + parseFloat(report.product_varient_cost ?? report.product_cost ?? 0),
               0
             )
           : 0
@@ -124,28 +124,30 @@ const ProfitSummaryList = (props) => {
       setTotalSelling(
         ProfitSummaryReportDataState?.ProfitSummaryReportData?.length > 0
           ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
-              (total, report) => total  + parseFloat((report.selling_price/report.units_sold)  ?? 0),
+              (total, report) => {
+                const unitsSold = parseFloat(report.units_sold ?? 0);
+                const sellingPrice = parseFloat(report.selling_price ?? 0);
+                return unitsSold > 0 ? total + sellingPrice / unitsSold : total;
+              },
               0
             )
           : 0
       );
-
-      // setTotalMargin(
-      //   ProfitSummaryReportDataState?.ProfitSummaryReportData?.length > 0
-      //     ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
-      //         (total, report) => total  + parseFloat(((report.selling_price/report.units_sold) - report.product_varient_cost === null ? parseFloat(report.product_cost) : parseFloat(report.product_varient_cost) ) ?? 0),
-      //         0
-      //       )
-      //     : 0
-      // );
 
       setTotalProfit(
         ProfitSummaryReportDataState?.ProfitSummaryReportData?.length > 0
           ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
               (total, report) => {
                 const costPrice = parseFloat(report.product_varient_cost ?? report.product_cost ?? 0);
-                const sellingPricePerUnit = parseFloat(report.selling_price ?? 0) / parseFloat(report.units_sold);
-                return total + (sellingPricePerUnit - costPrice);
+                const unitsSold = parseFloat(report.units_sold ?? 0);
+                const sellingPrice = parseFloat(report.selling_price ?? 0);
+                // Prevent division by zero
+                if (unitsSold > 0) {
+                  const sellingPricePerUnit = sellingPrice / unitsSold;
+                  const profit = sellingPricePerUnit - costPrice;
+                  return total + profit;
+                }
+                return total;
               },
               0
             )
@@ -157,15 +159,41 @@ const ProfitSummaryList = (props) => {
           ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
               (total, report) => {
                 const costPrice = parseFloat(report.product_varient_cost ?? report.product_cost ?? 0);
-                const sellingPricePerUnit = parseFloat(report.selling_price ?? 0) / parseFloat(report.units_sold);
-                const parmargin = (costPrice*100)/sellingPricePerUnit;
-                // const margin = ((sellingPricePerUnit-costPrice)/100);
-                return total + (100 - parmargin);
+                const unitsSold = parseFloat(report.units_sold ?? 0);
+                const sellingPrice = parseFloat(report.selling_price ?? 0);
+                if (unitsSold > 0 && sellingPrice > 0) {
+                  const sellingPricePerUnit = sellingPrice / unitsSold;
+                  const margin = ((sellingPricePerUnit - costPrice) / sellingPricePerUnit) * 100;
+                  return total + margin;
+                }
+                return total;
               },
               0
-            )
+            ) / ProfitSummaryReportDataState?.ProfitSummaryReportData?.length
           : 0
       );
+      // setTotalMargin(
+      //   ProfitSummaryReportDataState?.ProfitSummaryReportData?.length > 0
+      //     ? ProfitSummaryReportDataState?.ProfitSummaryReportData?.reduce(
+      //         (acc, report) => {
+      //           const costPrice = parseFloat(report.product_varient_cost ?? report.product_cost ?? 0);
+      //           const unitsSold = parseFloat(report.units_sold ?? 0);
+      //           const sellingPrice = parseFloat(report.selling_price ?? 0);
+      
+      //           const costItem = unitsSold * costPrice;
+      //           const sellingTotal = unitsSold * (sellingPrice / (unitsSold > 0 ? unitsSold : 1));
+      //           const profitTotal = sellingTotal - costItem;
+      //           const profitPercentage = (profitTotal / sellingTotal) * 100 || 0;
+      
+      //           return {
+      //             marginTotal: acc.marginTotal + profitPercentage,
+      //             count: acc.count + 1,
+      //           };
+      //         },
+      //         { marginTotal: 0, count: 0 }
+      //       ).marginTotal / ProfitSummaryReportDataState?.ProfitSummaryReportData?.length
+      //     : 0
+      // );
 
     } else {
       setProfitSummaryReportData([]);
@@ -234,11 +262,18 @@ const ProfitSummaryList = (props) => {
                         <>
                   {ProfitSummaryReportData.length > 0 &&
                     ProfitSummaryReportData.map((data, index) => {
-                      const costPrice = data.product_varient_cost === null ? parseFloat(data.product_cost) : parseFloat(data.product_varient_cost);
-                      const sellingPrice = parseFloat(data.selling_price)/data.units_sold;
+                      //const costPrice = data.product_varient_cost === null ? parseFloat(data.product_cost) : parseFloat(data.product_varient_cost);
+                      const costPrice = parseFloat(data.product_varient_cost ?? data.product_cost ?? 0);
+                      // const sellingPrice = parseFloat(data.selling_price)/data.units_sold;
+                      const sellingPrice = data.units_sold > 0 ? parseFloat(data.selling_price) / data.units_sold : 0;
                       const profit = sellingPrice - costPrice;
                       const parmargin = (costPrice*100)/sellingPrice;
-                      const netmargin = 100 - parmargin;
+                      // const netmargin = 100 - parmargin;
+                      const netmargin = sellingPrice > 0 ? (100 - ((costPrice * 100) / sellingPrice)) : 0;
+
+
+
+
                       return(
                       <StyledTableRow>
                         <StyledTableCell>
@@ -251,7 +286,15 @@ const ProfitSummaryList = (props) => {
                           <p>{data.units_sold}</p>
                         </StyledTableCell>
                         <StyledTableCell>
-                          ${data.product_varient_cost === null ? priceFormate(data.product_cost) : priceFormate(data.product_varient_cost)}
+                        {data.product_varient_cost || data.product_cost ? (
+                          `${
+                            data.product_varient_cost !== null
+                              ? '$'+priceFormate(data.product_varient_cost)
+                              : '$'+priceFormate(data.product_cost)
+                          }`
+                        ) : (
+                          ""
+                        )}
                         </StyledTableCell>
                         <StyledTableCell>
                           <p>${priceFormate(parseFloat(sellingPrice).toFixed(2))}</p>
