@@ -459,7 +459,7 @@ export default function PaymentCalDetails() {
                             ).toFixed(2)}
                           </span>
                         </p>
-                      )}orderSummeryData?.order_detail.cash_discounting
+                      )}
                       {couponDetails.coupon_code !== "" &&
                         !!couponDetails.coupon_code_amt ? (
                         <p>
